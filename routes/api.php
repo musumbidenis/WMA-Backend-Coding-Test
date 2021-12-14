@@ -14,6 +14,10 @@ use App\Http\Controllers\PaymentController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+Route::group(['middleware' => ['web']], function () {
 
-Route::any('/', [PaymentController::class, 'pay']);
-Route::any('/process', [PaymentController::class, 'process']);
+    Route::any('/', [PaymentController::class, 'authenticate']);
+    Route::any('/subscribe', [PaymentController::class, 'subscribe']);
+    Route::any('/activate', [PaymentController::class, 'activate']);
+
+});
