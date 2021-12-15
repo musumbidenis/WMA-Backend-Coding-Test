@@ -52,22 +52,21 @@ class PaymentController extends Controller
     public function subscribe(Request $request)
     {
         /* Fetch user details from session */
-        $email = $request->session()->get('userDetails')['email'];
+        $userId = $request->session()->get('userDetails')['userId'];
         $username = $request->session()->get('userDetails')['username'];
+        $email = $request->session()->get('userDetails')['email'];
         $userStatus = $request->session()->get('userDetails')['userStatus'];
+        $token = $request->session()->get('userDetails')['token'];
+        $renewalDate = $request->session()->get('userDetails')['renewalDate'];
 
         /* Check user status */
         if ($userStatus == 'is_premium'){
-            $now = now();
-            $renewalDate = $request->session()->get('userDetails')['renewalDate'];
-            $token = $request->session()->get('userDetails')['token'];
-
             /* Check if user is due to renew subscription 
             *  Use the user token to renew their subscription
             */
-            if($now >= $renewalDate){
+            if(now() >= $renewalDate){
 
-                $this->renew($token, $email);
+                $this->renew($userId, $email, $token);
 
             }else{
 
@@ -139,7 +138,7 @@ class PaymentController extends Controller
 
 
     /* Subscription renewal */
-    public function renew($token, $email)
+    public function renew($userId, $email, $token)
     {
         /* Get the user token and email
         *  Process the user renewal payment
@@ -185,6 +184,10 @@ class PaymentController extends Controller
             $billingDate = now();
             $renewalDate = now()->addDays(30);
 
+            DB::update(
+                'update users set billingDate = ?, renewalDate = ?, userStatus = ?, paymentStatus = ? where userId = ?', 
+                [$billingDate, $renewalDate, 'is_premium', 'active', $userId]
+            );
 
             echo "Monthly Subscription has been renewed";
         }
@@ -199,8 +202,6 @@ class PaymentController extends Controller
     /** Subscription activation */
     public function activate(Request $request)
     {
-        /* Get the user from session */
-
         if(isset($_GET['status']))
         {
             /* Check the payment process status */
@@ -241,7 +242,7 @@ class PaymentController extends Controller
                     /* Update user details in DB
                     *  Assign token to user for recurring payments
                     */
-                    $userId = $request->session('userDetails')['userId'];
+                    $userId = $userId = $request->session()->get('userDetails')['userId'];
                     $token = $res->data->card->token;
                     $billingDate = now();
                     $renewalDate = now()->addDays(30);//Monthly subscription of 30 days
@@ -251,7 +252,7 @@ class PaymentController extends Controller
                         [$token, $billingDate, $renewalDate, 'is_premium', 'active', $userId]
                     );
 
-                    echo 'Your subscription payment was successful';
+                    echo 'Your subscription activation payment was successful';
 
 
                 }else{
