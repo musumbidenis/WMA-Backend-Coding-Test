@@ -35,6 +35,9 @@ class PaymentController extends Controller
         if($userStatus == 'is_premium'){
 
             DB::update("update users set userStatus = 'not_premium', token = null, billingDate = null, renewalDate = null, paymentStatus = 'inactive' where userId = ?", [$userId]);
+            $userDetails = User::get()->first();
+            $request->session()->put('userDetails', $userDetails);
+    
             echo "Deactivation of premium status was succesfull";
 
         }else{
