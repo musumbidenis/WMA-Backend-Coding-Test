@@ -10,7 +10,7 @@ use DB;
 class PaymentController extends Controller
 {
     /* Authenticate users */
-    public function authenticate(Request $request)
+    public function user(Request $request)
     {
 
         /* Fetch user details from the database
@@ -20,8 +20,31 @@ class PaymentController extends Controller
         $userDetails = User::get()->first();
         $request->session()->put('userDetails', $userDetails);
 
-        return redirect('/api/subscribe');
+        echo json_encode($userDetails, JSON_PRETTY_PRINT);
 
+    }
+
+
+    /* Toggle user status */
+    public function changeStatus(Request $request)
+    {
+        /* Fetch user details from session */
+        $userId = $request->session()->get('userDetails')['userId'];
+        $userStatus = $request->session()->get('userDetails')['userStatus'];
+
+        if($userStatus == 'is_premium'){
+
+            DB::update("update users set userStatus = 'not_premium', token = null, billingDate = null, renewalDate = null, paymentStatus = 'inactive' where userId = ?", [$userId]);
+            echo "Deactivation of premium status was succesfull";
+
+        }else{
+
+            /* Initiate premium subscription */
+            return redirect('api/subscribe');
+
+        }
+
+        
     }
 
 
@@ -159,6 +182,10 @@ class PaymentController extends Controller
         if($res->status == 'success')
         {
             /* Update billing date and renewal date */
+            $billingDate = now();
+            $renewalDate = now()->addDays(30);
+
+
             echo "Monthly Subscription has been renewed";
         }
         else

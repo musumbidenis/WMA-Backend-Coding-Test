@@ -16,7 +16,8 @@ use App\Http\Controllers\PaymentController;
 */
 Route::group(['middleware' => ['web']], function () {
 
-    Route::any('/', [PaymentController::class, 'authenticate']);
+    Route::any('/user', [PaymentController::class, 'user']);
+    Route::any('/change_status', [PaymentController::class, 'changeStatus']);
     Route::any('/subscribe', [PaymentController::class, 'subscribe']);
     Route::any('/activate', [PaymentController::class, 'activate']);
 
