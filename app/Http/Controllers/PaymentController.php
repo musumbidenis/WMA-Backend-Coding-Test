@@ -9,6 +9,7 @@ use DB;
 
 class PaymentController extends Controller
 {
+    /* Authenticate users */
     public function authenticate(Request $request)
     {
 
@@ -27,7 +28,7 @@ class PaymentController extends Controller
     /** Intiate the subscription payment */
     public function subscribe(Request $request)
     {
-        /* Fetch user details */
+        /* Fetch user details from session */
         $email = $request->session()->get('userDetails')['email'];
         $username = $request->session()->get('userDetails')['username'];
         $userStatus = $request->session()->get('userDetails')['userStatus'];
@@ -38,7 +39,9 @@ class PaymentController extends Controller
             $renewalDate = $request->session()->get('userDetails')['renewalDate'];
             $token = $request->session()->get('userDetails')['token'];
 
-            /* Check if user is due to renew subscription */
+            /* Check if user is due to renew subscription 
+            *  Use the user token to renew their subscription
+            */
             if($now >= $renewalDate){
 
                 $this->renew($token, $email);
@@ -50,7 +53,7 @@ class PaymentController extends Controller
             }
             
         }else{
-            /* Activate premium subscription for user
+            /* Initiate premium subscription activation for user
             *  Prepare our rave request
             */
             $data = [
@@ -111,12 +114,13 @@ class PaymentController extends Controller
 
     }
 
+
+    /* Subscription renewal */
     public function renew($token, $email)
     {
-        /* Get the user token
+        /* Get the user token and email
         *  Process the user renewal payment
         */
-
         $data = [
             'token' => $token,
             'tx_ref' => time(),
@@ -165,7 +169,7 @@ class PaymentController extends Controller
     }
 
 
-    /** Subscription activation payment */
+    /** Subscription activation */
     public function activate(Request $request)
     {
         /* Get the user from session */
@@ -207,34 +211,26 @@ class PaymentController extends Controller
                 $res = json_decode($response);
                 if($res->status)
                 {
-                    $amountPaid = $res->data->charged_amount;
-                    $amountBilled = $res->data->meta->price;
+                    /* Update user details in DB
+                    *  Assign token to user for recurring payments
+                    */
+                    $userId = $request->session('userDetails')['userId'];
+                    $token = $res->data->card->token;
+                    $billingDate = now();
+                    $renewalDate = now()->addDays(30);//Monthly subscription of 30 days
 
-                    /* Cross-check the amount paid with amount billed */
-                    if($amountPaid >= $amountBilled)
-                    {
-                        /* Update user details in DB
-                        *  Assign token to user for recurring payments
-                        */
-                        $userId = $request->session()->get('userDetails')['userId'];
-                        $token = $res->data->card->token;
+                    DB::update(
+                        'update users set token = ?, billingDate = ?, renewalDate = ?, userStatus = ?, paymentStatus = ? where userId = ?', 
+                        [$token, $billingDate, $renewalDate, 'is_premium', 'active', $userId]
+                    );
 
-                        DB::update(
-                            'update users set token = ?, billingDate = ?, userStatus = ?, paymentStatus = ? where userId = ?', 
-                            [$token, now(), 'is_premium', 'active', $userId]
-                        );
+                    echo 'Your subscription payment was successful';
 
-                        echo 'Your subscription payment was successful';
 
-                    }
-                    else
-                    {
-                        echo 'Please pay the full subscription amount required to activate your premium product';
-                    }
-                }
-                else
-                {
+                }else{
+
                     echo 'We cannot process your payment now. Try again later';
+
                 }
             }
         }
